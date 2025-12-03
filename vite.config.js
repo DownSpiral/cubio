@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
+// Get base path from environment variable, default to /cubio/
+const basePath = process.env.GITHUB_PAGES_BASE || '/cubio/';
+console.log('Vite base path:', basePath);
+
 export default defineConfig({
-  base: process.env.GITHUB_PAGES_BASE || '/cubio/',
+  base: basePath,
   server: {
     port: 3000,
     open: true
