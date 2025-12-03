@@ -14,8 +14,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        format: 'es',
+        // Bundle everything into a single file to avoid IIFE format conflicts with cubing library
+        inlineDynamicImports: true
+      }
+    },
     commonjsOptions: {
-      include: [/cubing/, /node_modules/]
+      transformMixedEsModules: true
     }
   },
   resolve: {
