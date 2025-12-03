@@ -4,7 +4,7 @@
  * Based on the working gan-cube-sample example
  */
 
-import { connectGanCube, connectGanCubeFromDevice } from 'gan-web-bluetooth';
+import { connectGanCube } from 'gan-web-bluetooth';
 
 export class GanConnection {
     constructor() {
@@ -17,6 +17,7 @@ export class GanConnection {
         this.lastDeviceId = null;
         this.reconnectToastInterval = null;
         this.reconnectToastTimeout = null;
+        this.connectGanCubeFromDevice = null; // Lazy-loaded to avoid build errors if not exported
     }
     
     /**
@@ -367,6 +368,18 @@ export class GanConnection {
         this.showReconnectToast(15);
         
         try {
+            // Lazy-load connectGanCubeFromDevice since some builds of gan-web-bluetooth don't export it statically
+            if (!this.connectGanCubeFromDevice) {
+                const mod = await import('gan-web-bluetooth');
+                this.connectGanCubeFromDevice = mod.connectGanCubeFromDevice || null;
+            }
+            
+            if (!this.connectGanCubeFromDevice) {
+                console.log('Auto-reconnect: connectGanCubeFromDevice not available; skipping auto-reconnect');
+                this.hideReconnectToast();
+                return false;
+            }
+            
             // Find the previously paired device
             const device = await this.checkForPreviouslyPairedDevice();
             if (!device) {
@@ -391,7 +404,7 @@ export class GanConnection {
             }
             
             // Connect using the new function (no user gesture required)
-            this.connection = await connectGanCubeFromDevice(device, storedMac);
+            this.connection = await this.connectGanCubeFromDevice(device, storedMac);
             this.isConnected = true;
             
             // Store connection info for future reconnects
