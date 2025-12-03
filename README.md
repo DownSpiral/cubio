@@ -40,6 +40,40 @@ npm run build
 
 The built files will be in the `dist` directory.
 
+## Deployment
+
+### GitHub Pages
+
+This project is configured for automated deployment to GitHub Pages using GitHub Actions.
+
+#### Initial Setup
+
+1. Go to your repository settings on GitHub
+2. Navigate to **Settings** → **Pages**
+3. Under **Source**, select **GitHub Actions**
+4. The workflow will automatically deploy on every push to the `main` branch
+
+#### How It Works
+
+- The GitHub Actions workflow (`.github/workflows/deploy.yml`) automatically:
+  - Builds the project when you push to `main`
+  - Deploys the built files to GitHub Pages
+  - Uses the repository name as the base path (e.g., `/cubio/`)
+
+#### Manual Deployment
+
+If you need to deploy manually or test the build locally:
+
+```bash
+# Build with GitHub Pages base path
+GITHUB_PAGES_BASE=/cubio/ npm run build
+
+# Or use the default (assumes repository name is "cubio")
+npm run build
+```
+
+The site will be available at `https://<username>.github.io/cubio/` (replace `cubio` with your repository name if different).
+
 ## Usage
 
 ### Connecting Your Cube
