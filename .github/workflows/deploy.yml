@@ -31,8 +31,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set base path
+        id: base_path
+        run: |
+          REPO_NAME="${{ github.event.repository.name }}"
+          BASE_PATH="/${REPO_NAME}/"
+          echo "Repository name: ${REPO_NAME}"
+          echo "Base path: ${BASE_PATH}"
+          echo "GITHUB_PAGES_BASE=${BASE_PATH}" >> $GITHUB_ENV
+
       - name: Build
-        run: npm run build
+        run: |
+          echo "Building with base path: $GITHUB_PAGES_BASE"
+          npm run build
         env:
           GITHUB_PAGES_BASE: /${{ github.event.repository.name }}/
 
