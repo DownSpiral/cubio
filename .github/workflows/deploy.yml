@@ -39,6 +39,10 @@ jobs:
           echo "Base path: ${BASE_PATH}"
           echo "Building with GITHUB_PAGES_BASE=${BASE_PATH}"
           GITHUB_PAGES_BASE="${BASE_PATH}" npm run build
+          echo "Build completed. Checking dist folder:"
+          ls -la dist/ || echo "dist folder not found"
+          echo "Checking for index.html:"
+          cat dist/index.html | grep -E "(script|src)" | head -5 || echo "index.html not found or no script tags"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

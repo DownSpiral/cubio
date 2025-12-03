@@ -13,7 +13,10 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    commonjsOptions: {
+      include: [/cubing/, /node_modules/]
+    }
   },
   resolve: {
     alias: {
