@@ -1,0 +1,22 @@
+{
+  "name": "cube-practice-js",
+  "version": "1.0.0",
+  "description": "Rubik's cube practice website with GAN Bluetooth cube integration",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "aes-js": "^3.1.2",
+    "canvas-confetti": "^1.9.4",
+    "cubing": "^0.51.2",
+    "gan-web-bluetooth": "git+https://github.com/DownSpiral/gan-web-bluetooth.git",
+    "rxjs": "^7.8.1",
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

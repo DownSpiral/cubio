@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cubio</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            color: white;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header-content {
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+        }
+
+        .settings-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: auto;
+            min-width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .hamburger-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: auto;
+            min-width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hamburger-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 998;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .nav-drawer-overlay.show {
+            display: block;
+            opacity: 1;
+        }
+
+        .nav-drawer {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            max-width: 80vw;
+            height: 100%;
+            background: #1e293b;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            overflow-y: auto;
+            transition: left 0.3s ease;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .nav-drawer.open {
+            left: 0;
+        }
+
+        .close-nav-drawer {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #f56565;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-nav-drawer:hover {
+            background: #e53e3e;
+        }
+
+        .nav-menu {
+            margin-top: 40px;
+        }
+
+        .nav-menu h2 {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .nav-item {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            text-align: left;
+            background: transparent;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+        }
+
+        .nav-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateX(5px);
+        }
+
+        .nav-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .settings-drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 998;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .settings-drawer-overlay.show {
+            display: block;
+            opacity: 1;
+        }
+
+        .settings-drawer {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            max-width: 90vw;
+            height: 100%;
+            background: #1e293b;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            overflow-y: auto;
+            transition: right 0.3s ease;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .settings-drawer.open {
+            right: 0;
+        }
+
+        .close-settings-drawer {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #f56565;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-settings-drawer:hover {
+            background: #e53e3e;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            .main-content {
+                grid-template-columns: auto 1fr;
+            }
+        }
+
+        .content-view {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .view-content {
+            display: none;
+        }
+
+        .view-content.active {
+            display: block;
+        }
+
+        .history-content-inline {
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+
+        .cube-view {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: 100%;
+            min-width: 300px;
+        }
+
+        @media (min-width: 768px) {
+            .cube-view {
+                width: min(50vw, 550px);
+                max-width: min(50vw, 550px);
+            }
+        }
+
+        .connect-btn-cube {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) !important;
+            z-index: 10;
+            width: auto;
+            padding: 12px 24px;
+            font-size: 1.1em;
+            transition: background-color 0.3s, box-shadow 0.3s !important;
+        }
+
+        .connect-btn-cube:hover,
+        .connect-btn-cube:active,
+        .connect-btn-cube:focus,
+        .connect-btn-cube:disabled {
+            transform: translate(-50%, -50%) !important;
+        }
+
+        .connect-btn-cube.hidden {
+            display: none;
+        }
+
+        #cube {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+        
+        #cube twisty-player {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .controls {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .main-controls {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+        }
+
+        .control-section h2 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #e2e8f0;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .connect-btn-cube.btn-primary:hover {
+            transform: translate(-50%, -50%);
+        }
+
+        .btn-primary:disabled {
+            background: #475569;
+            color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+            transform: translateY(-2px);
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .status.connected {
+            background: #064e3b;
+            color: #6ee7b7;
+            border: 1px solid #10b981;
+        }
+
+        .status.disconnected {
+            background: #7f1d1d;
+            color: #fca5a5;
+            border: 1px solid #ef4444;
+        }
+
+        .status.connecting {
+            background: #78350f;
+            color: #fcd34d;
+            border: 1px solid #f59e0b;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            border: 2px solid #334155;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 2px solid #334155;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        label {
+            color: #e2e8f0;
+        }
+
+        .sequence-display {
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 6px;
+            padding: 15px;
+            min-height: 150px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #e2e8f0;
+        }
+
+        .move {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .move.pending {
+            color: #94a3b8;
+            background: #1e293b;
+        }
+
+        .move.current {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+
+        .move.completed {
+            color: #6ee7b7;
+            background: #064e3b;
+        }
+
+        .move.error {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+
+        .move.correction {
+            background: #78350f;
+            color: #fcd34d;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+
+        .info-text {
+            color: #94a3b8;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .info-text code {
+            background: #1e293b;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+        }
+
+        .timer-display {
+            font-size: 3em;
+            font-weight: bold;
+            text-align: center;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 0;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 2px solid #334155;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #e2e8f0;
+        }
+
+        .close-modal-btn {
+            background: #f56565;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .close-modal-btn:hover {
+            background: #e53e3e;
+        }
+
+        .history-content {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(90vh - 80px);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .history-header h2 {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .btn-ghost-danger {
+            width: auto;
+            padding: 8px 12px;
+            background: rgba(245, 101, 101, 0.12);
+            color: #fca5a5;
+            border: 1px solid rgba(248, 113, 113, 0.35);
+            font-size: 0.9em;
+        }
+
+        .btn-ghost-danger:hover {
+            background: rgba(245, 101, 101, 0.22);
+            color: #fecdd3;
+            transform: translateY(-1px);
+        }
+
+        /* Reconnect Toast Notification */
+        .reconnect-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .reconnect-toast-content {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #3b82f6;
+            border-radius: 16px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+            min-width: 240px;
+        }
+
+        .reconnect-timer-container {
+            position: relative;
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .reconnect-timer-circle {
+            width: 32px;
+            height: 32px;
+            transform: rotate(-90deg);
+        }
+
+        .reconnect-timer-bg {
+            fill: none;
+            stroke: rgba(59, 130, 246, 0.2);
+            stroke-width: 3;
+        }
+
+        .reconnect-timer-progress {
+            fill: none;
+            stroke: #3b82f6;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-dasharray: 94.25;
+            stroke-dashoffset: 94.25;
+            transition: stroke-dashoffset 0.1s linear;
+        }
+
+        .reconnect-timer-text {
+            display: none;
+        }
+
+        .reconnect-toast-text {
+            flex: 1;
+        }
+
+        .reconnect-text-shimmer {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e2e8f0;
+            background: linear-gradient(
+                90deg,
+                #e2e8f0 0%,
+                #60a5fa 50%,
+                #e2e8f0 100%
+            );
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .history-summary {
+            background: #0f172a;
+            border: 1px solid #243c5a;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        }
+
+        .history-summary-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .history-summary-title {
+            font-weight: 700;
+            font-size: 1.05em;
+            color: #e2e8f0;
+        }
+
+        .history-summary-subtitle {
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .history-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .history-stat-card {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .history-summary-label {
+            color: #94a3b8;
+            font-size: 0.85em;
+            letter-spacing: 0.01em;
+        }
+
+        .history-summary-value {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #cbd5f5;
+            font-family: 'Courier New', monospace;
+        }
+
+        .history-summary-hint {
+            color: #64748b;
+            font-size: 0.8em;
+            margin-top: 4px;
+        }
+
+        .history-summary-latest {
+            text-align: right;
+        }
+
+        .history-trend {
+            margin-top: 14px;
+        }
+
+        .history-trend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .history-trend-chart {
+            width: 100%;
+            height: 160px;
+            margin-top: 8px;
+        }
+
+        .history-trend-line {
+            fill: none;
+            stroke: #667eea;
+            stroke-width: 2.5;
+        }
+
+        .history-trend-area {
+            stroke: none;
+        }
+
+        .history-trend-point {
+            stroke: #0f172a;
+            stroke-width: 2;
+        }
+
+        .history-trend-point.latest {
+            fill: #fbbf24;
+        }
+
+        .history-trend-point.best {
+            fill: #34d399;
+        }
+
+        .history-trend-footer {
+            display: flex;
+            justify-content: space-between;
+            color: #475569;
+            font-size: 0.8em;
+        }
+
+        .history-trend-legend {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #94a3b8;
+        }
+
+        .legend-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            margin-right: 4px;
+        }
+
+        .legend-dot.best {
+            background: #34d399;
+        }
+
+        .legend-dot.latest {
+            background: #fbbf24;
+        }
+
+        .history-item {
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .history-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .btn-delete-solve {
+            background: #f56565;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.3s;
+        }
+
+        .btn-delete-solve:hover {
+            background: #e53e3e;
+            transform: scale(1.1);
+        }
+
+        .history-item-time {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+        }
+
+        .history-item-date {
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .history-item-stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .history-item-moves {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #334155;
+        }
+
+        .history-item-moves-title {
+            color: #e2e8f0;
+            font-weight: 600;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .history-item-moves-title:hover {
+            color: #667eea;
+        }
+
+        .history-item-moves-title.expanded span:first-child {
+            transform: rotate(90deg);
+            display: inline-block;
+        }
+
+        .history-item-moves-list {
+            display: none;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+
+        .history-item-moves-list.expanded {
+            display: block;
+        }
+
+        .move-item {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 2px;
+            background: #1e293b;
+            border-radius: 4px;
+            color: #e2e8f0;
+        }
+
+        .move-item-time {
+            color: #94a3b8;
+            font-size: 0.85em;
+            margin-left: 4px;
+        }
+
+        .empty-history {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button id="hamburger-toggle" class="hamburger-toggle">☰</button>
+            <div class="header-content">
+                <h1>Cubio</h1>
+            </div>
+            <button id="settings-toggle" class="settings-toggle">⚙</button>
+        </div>
+
+        <div class="main-content">
+            <div class="cube-view">
+                <button id="connect-btn-cube" class="btn-primary connect-btn-cube">Connect to GAN Cube</button>
+                <div id="cube"></div>
+            </div>
+
+            <div class="content-view">
+                <!-- Timer View -->
+                <div id="timer-view" class="view-content active">
+                    <div class="control-section">
+                        <h2>Timer</h2>
+                        <div id="timer-display" class="timer-display">0.00</div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button id="start-timer-btn" class="btn-primary" disabled>Start Timer</button>
+                            <button id="stop-timer-btn" class="btn-danger" style="display: none;">Stop Timer</button>
+                            <button id="reset-timer-btn" class="btn-secondary" style="display: none;">Reset</button>
+                        </div>
+                        <div id="phase-display" style="display: none; margin-top: 15px; padding: 15px; background: #0f172a; border: 2px solid #334155; border-radius: 8px;">
+                            <div style="font-weight: 600; margin-bottom: 10px; color: #e2e8f0;">Current Phase: <span id="current-phase-name" style="color: #667eea;">-</span></div>
+                            <div style="font-size: 0.9em; color: #94a3b8; margin-bottom: 10px;">Phase Time: <span id="current-phase-time" style="color: #e2e8f0; font-family: 'Courier New', monospace;">0.00</span></div>
+                            <div id="completed-phases" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155;">
+                                <div style="font-weight: 600; margin-bottom: 8px; color: #e2e8f0; font-size: 0.9em;">Completed Phases:</div>
+                                <div id="completed-phases-list" style="font-size: 0.85em; color: #94a3b8;">
+                                    <div style="color: #64748b; font-style: italic;">No phases completed yet</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="info-text" style="margin-top: 10px;">
+                            Scramble the cube, then wait 2 seconds after your last move. A 15-second inspection timer will start, then the solve timer begins.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notation Trainer View -->
+                <div id="trainer-view" class="view-content">
+                    <div class="control-section">
+                        <h2>Notation Trainer</h2>
+                        <button id="start-trainer-btn" class="btn-primary" disabled>Start Trainer</button>
+                        <button id="reset-trainer-btn" class="btn-secondary" style="margin-top: 10px; display: none;">Reset</button>
+                        <div class="progress-bar" style="display: none;">
+                            <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="control-section">
+                        <h2>Move Sequence</h2>
+                        <div id="sequence-display" class="sequence-display">
+                            <div style="color: #64748b; text-align: center; padding: 20px;">
+                                Generate a scramble or start trainer to see moves
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cross Practice View -->
+                <div id="cross-practice-view" class="view-content">
+                    <div class="control-section">
+                        <h2>Cross Practice</h2>
+                        <div class="info-text" style="margin-top: 15px; text-align: center;">
+                            Practice solving the cross on a 3x3x3 cube. The cube on the left shows only the cross pieces highlighted. Connect your cube to practice with real-time feedback.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Solve History View -->
+                <div id="history-view" class="view-content">
+                    <div class="control-section">
+                        <div class="history-header">
+                            <h2>Solve History</h2>
+                            <button id="clear-history-btn" class="btn-ghost-danger" title="Clear all history">Clear history</button>
+                        </div>
+                        <div id="history-content-inline" class="history-content-inline">
+                            <!-- History items will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Drawer (Left) -->
+    <div id="nav-drawer-overlay" class="nav-drawer-overlay"></div>
+    <div id="nav-drawer" class="nav-drawer">
+        <button id="close-nav-drawer" class="close-nav-drawer">×</button>
+        <div class="nav-menu">
+            <h2>Navigation</h2>
+            <button class="nav-item active" data-view="timer-view">Timer</button>
+            <button class="nav-item" data-view="trainer-view">Notation Trainer</button>
+            <button class="nav-item" data-view="cross-practice-view">Cross Practice</button>
+            <button class="nav-item" data-view="history-view">Solve History</button>
+        </div>
+    </div>
+
+    <!-- Settings Drawer (Right) -->
+    <div id="settings-drawer-overlay" class="settings-drawer-overlay"></div>
+    <div id="settings-drawer" class="settings-drawer">
+        <button id="close-settings-drawer" class="close-settings-drawer">×</button>
+        <div class="controls">
+            <div class="control-section">
+                <h2>Cube Control</h2>
+                <button id="reset-cube-btn" class="btn-danger" disabled>Reset Cube</button>
+                <div class="info-text" style="margin-top: 10px;">
+                    Reset the cube to its default state. The cube must be in a solved state before resetting.
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2>Connection</h2>
+                <div id="connection-status" class="status disconnected">Disconnected</div>
+                <div id="mac-address-input-container" style="display: none; margin-bottom: 10px;">
+                    <label for="mac-address-input" style="display: block; margin-bottom: 5px; font-weight: 600;">MAC Address:</label>
+                    <input type="text" id="mac-address-input" placeholder="XX:XX:XX:XX:XX:XX" 
+                           style="width: 100%; padding: 8px; border: 2px solid #334155; border-radius: 6px; font-family: monospace; background: #0f172a; color: #e2e8f0;">
+                    <div class="info-text" style="margin-top: 5px;">
+                        Find at <code>chrome://bluetooth-internals</code>
+                    </div>
+                </div>
+                <button id="connect-btn" class="btn-primary">Connect to GAN Cube</button>
+                <button id="disconnect-btn" class="btn-danger" style="margin-top: 10px; display: none;">Disconnect</button>
+                <button id="clear-mac-btn" class="btn-secondary" style="margin-top: 10px;">Clear Stored MAC Address</button>
+                <div class="info-text" style="margin-top: 10px;">
+                    <strong>Note:</strong> If connection fails, you may need to enter your cube's MAC address manually. 
+                    Find it at <code>chrome://bluetooth-internals</code> or enable experimental web features.
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2>Scrambler</h2>
+                <select id="scramble-algorithm">
+                    <option value="random">Random 25 Moves</option>
+                    <option value="wca">WCA Style</option>
+                </select>
+                <div class="info-text">Select scramble method for the trainer</div>
+            </div>
+
+            <div class="control-section">
+                <h2>Solve Method</h2>
+                <label for="solve-method" style="display: block; margin-bottom: 5px; font-weight: 600;">Method:</label>
+                <select id="solve-method">
+                    <option value="CFOP">CFOP</option>
+                </select>
+                <label for="cross-face" style="display: block; margin-bottom: 5px; margin-top: 15px; font-weight: 600;">Cross Face:</label>
+                <select id="cross-face">
+                    <option value="W">White (W)</option>
+                    <option value="Y">Yellow (Y)</option>
+                    <option value="G">Green (G)</option>
+                    <option value="B">Blue (B)</option>
+                    <option value="R">Red (R)</option>
+                    <option value="O">Orange (O)</option>
+                </select>
+                <div class="info-text" style="margin-top: 10px;">
+                    Select which face you always make the cross on for phase detection.
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2>Camera Controls</h2>
+                <label for="camera-latitude" style="display: block; margin-bottom: 5px; font-weight: 600;">Latitude (Elevation):</label>
+                <input type="number" id="camera-latitude" value="40" min="0" max="90" step="1" 
+                       style="width: 100%; padding: 8px; border: 2px solid #334155; border-radius: 6px; margin-bottom: 10px; background: #0f172a; color: #e2e8f0;">
+                <label for="camera-longitude" style="display: block; margin-bottom: 5px; font-weight: 600;">Longitude (Rotation):</label>
+                <input type="number" id="camera-longitude" value="30" min="-180" max="180" step="1" 
+                       style="width: 100%; padding: 8px; border: 2px solid #334155; border-radius: 6px; margin-bottom: 10px; background: #0f172a; color: #e2e8f0;">
+                <label for="camera-latitude-limit" style="display: block; margin-bottom: 5px; font-weight: 600;">Latitude Limit:</label>
+                <input type="number" id="camera-latitude-limit" value="90" min="0" max="90" step="1" 
+                       style="width: 100%; padding: 8px; border: 2px solid #334155; border-radius: 6px; margin-bottom: 15px; background: #0f172a; color: #e2e8f0;">
+                <div class="info-text">Adjust these values to change the cube view angle</div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="history-modal-overlay" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Solve History</h2>
+                <button id="close-history-modal" class="close-modal-btn">×</button>
+            </div>
+            <div id="history-content" class="history-content">
+                <!-- History items will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Reconnect Toast Notification -->
+    <div id="reconnect-toast" class="reconnect-toast" style="display: none;">
+        <div class="reconnect-toast-content">
+            <div class="reconnect-timer-container">
+                <svg class="reconnect-timer-circle" viewBox="0 0 60 60">
+                    <circle class="reconnect-timer-bg" cx="30" cy="30" r="15"></circle>
+                    <circle class="reconnect-timer-progress" cx="30" cy="30" r="15"></circle>
+                </svg>
+            </div>
+            <div class="reconnect-toast-text">
+                <span class="reconnect-text-shimmer">Reconnecting cube...</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
