@@ -158,6 +158,19 @@ class CubePracticeApp {
         this.solveCheckTimeout = null; // Timeout for checking if cube is solved
         this.currentView = 'timer-view'; // Track current active view
         
+        // Map view IDs to URL hash values
+        this.viewHashMap = {
+            'timer-view': 'timer',
+            'trainer-view': 'trainer',
+            'cross-practice-view': 'cross-practice',
+            'history-view': 'history'
+        };
+        
+        // Reverse map for hash to view ID
+        this.hashViewMap = Object.fromEntries(
+            Object.entries(this.viewHashMap).map(([view, hash]) => [hash, view])
+        );
+        
         this.init();
     }
     
@@ -179,7 +192,6 @@ class CubePracticeApp {
             controlPanel: 'none',
             hintFacelets: 'none',
             experimentalDragInput: 'none',
-            experimentalSetupAlg: '', // Rotate so Yellow=U, Green=F, Orange=R
             cameraLatitude: initialLatitude,
             cameraLongitude: initialLongitude,
             cameraLatitudeLimit: initialLatitudeLimit,
@@ -228,8 +240,11 @@ class CubePracticeApp {
         // Set up UI event listeners
         this.setupEventListeners();
         
-        // Initialize default view (Timer)
-        this.switchContentView('timer-view');
+        // Set up URL hash navigation
+        this.setupHashNavigation();
+        
+        // Initialize view from URL hash or default to timer
+        this.initializeViewFromHash();
         
         // Attempt auto-reconnect on page load
         this.attemptAutoReconnect();
@@ -376,11 +391,8 @@ class CubePracticeApp {
         const startTimerBtn = document.getElementById('start-timer-btn');
         if (startTimerBtn) {
             startTimerBtn.addEventListener('click', () => {
-                console.log('Start timer button clicked');
                 this.startTimer();
             });
-        } else {
-            console.error('Start timer button not found!');
         }
         
         const stopTimerBtn = document.getElementById('stop-timer-btn');
@@ -481,13 +493,49 @@ class CubePracticeApp {
                 const viewId = item.getAttribute('data-view');
                 this.switchContentView(viewId);
                 
-                // Update active state
-                navItems.forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
-                
                 // Close navigation drawer
                 this.closeNavigationDrawer();
             });
+        });
+    }
+    
+    setupHashNavigation() {
+        // Listen for hash changes (browser back/forward buttons)
+        window.addEventListener('hashchange', () => {
+            this.initializeViewFromHash();
+        });
+    }
+    
+    initializeViewFromHash() {
+        // Get hash from URL (remove the #)
+        const hash = window.location.hash.slice(1);
+        
+        // Determine which view to show
+        let targetView = 'timer-view'; // Default
+        
+        if (hash) {
+            // Check if hash maps to a valid view
+            if (this.hashViewMap[hash]) {
+                targetView = this.hashViewMap[hash];
+            }
+        }
+        
+        // Switch to the target view
+        this.switchContentView(targetView);
+        
+        // Update active nav item
+        this.updateActiveNavItem(targetView);
+    }
+    
+    updateActiveNavItem(viewId) {
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(nav => {
+            const navViewId = nav.getAttribute('data-view');
+            if (navViewId === viewId) {
+                nav.classList.add('active');
+            } else {
+                nav.classList.remove('active');
+            }
         });
     }
     
@@ -499,11 +547,15 @@ class CubePracticeApp {
         // Update twisty player stickering based on view
         if (viewId === 'cross-practice-view') {
             // Set cross stickering and setup anchor for cross practice
-            this.twistyPlayer.experimentalStickering = 'Cross';
+            let oldAlg = this.twistyPlayer.experimentalGet.alg();
+            this.twistyPlayer.alg = '';
+            this.twistyPlayer.experimentalStickeringMaskOrbits = 'EDGES:----IIIIIIII,CORNERS:IIIIIIII,CENTERS:------';
+            this.twistyPlayer.alg = oldAlg;
             this.twistyPlayer.experimentalSetupAnchor = 'start';
         } else {
             // Remove stickering and reset setup anchor for other views
             this.twistyPlayer.experimentalStickering = null;
+            this.twistyPlayer.experimentalStickeringMaskOrbits = 'EDGES:------------,CORNERS:--------,CENTERS:------';
             this.twistyPlayer.experimentalSetupAnchor = 'start';
         }
         
@@ -512,6 +564,16 @@ class CubePracticeApp {
         if (selectedView) {
             selectedView.classList.add('active');
             this.currentView = viewId; // Update current view tracking
+            
+            // Update URL hash to reflect current view
+            const hash = this.viewHashMap[viewId] || 'timer';
+            if (window.location.hash !== `#${hash}`) {
+                // Use replaceState to avoid adding to browser history
+                window.history.replaceState(null, '', `#${hash}`);
+            }
+            
+            // Update active nav item
+            this.updateActiveNavItem(viewId);
             
             // If switching to history view, refresh it
             if (viewId === 'history-view') {
@@ -576,7 +638,6 @@ class CubePracticeApp {
                 const crossFaceColor = localStorage.getItem('cross-face') || 'W';
                 const crossFace = this.colorToFace(crossFaceColor);
                 this.timer.setSolveMethod(e.target.value, crossFace);
-                console.log('Solve method updated:', e.target.value, 'crossFace:', crossFace, 'color:', crossFaceColor);
             });
         }
         
@@ -597,7 +658,6 @@ class CubePracticeApp {
                 const solveMethod = localStorage.getItem('solve-method') || 'CFOP';
                 const crossFace = this.colorToFace(e.target.value);
                 this.timer.setSolveMethod(solveMethod, crossFace);
-                console.log('Cross face updated:', e.target.value, 'face:', crossFace, 'solveMethod:', solveMethod);
             });
         }
         
@@ -606,7 +666,6 @@ class CubePracticeApp {
         const crossFaceColor = localStorage.getItem('cross-face') || 'W';
         const crossFace = this.colorToFace(crossFaceColor);
         this.timer.setSolveMethod(solveMethod, crossFace);
-        console.log('Initialized solve method:', solveMethod, 'crossFace:', crossFace, 'color:', crossFaceColor);
     }
     
     async connectCube() {
@@ -874,7 +933,6 @@ class CubePracticeApp {
             
             // Check phase completion during solving
             if (timerState === TIMER_STATE.SOLVING) {
-                console.log('Received facelets during solving, checking phases...');
                 await this.timer.checkPhaseCompletion(facelets);
             }
             
@@ -905,7 +963,6 @@ class CubePracticeApp {
                     const solution = await experimentalSolve3x3x3IgnoringCenters(kpattern);
                     const scramble = solution.invert();
                     this.twistyPlayer.alg = scramble;
-                    console.log('Scramble:', scramble);
 
                 } else {
                     // Solved state - set empty algorithm
@@ -966,8 +1023,6 @@ class CubePracticeApp {
                     const solutionMoves = solutionString.split(' ').filter(m => m.trim());
                     const transformedMoves = solutionMoves.map(move => transformMoveForSetup(move));
                     scramble = transformedMoves.join(' ');
-                    
-                    console.log('Cube not solved, generating solution:', scramble);
                 }
             } else {
                 // Cube not connected, generate a random scramble
@@ -1007,7 +1062,6 @@ class CubePracticeApp {
         document.querySelector('.progress-bar').style.display = 'none';
         
         if (this.currentScramble) {
-            console.log('Current scramble:', this.currentScramble);
             this.displaySequence(this.currentScramble.split(' '), []);
         } else {
             document.getElementById('sequence-display').innerHTML = 
@@ -1055,7 +1109,6 @@ class CubePracticeApp {
     startTimer() {
         // Manual start - works regardless of cube state
         const state = this.timer.getState();
-        console.log('Start timer clicked. State:', state, 'cubeWasSolved:', this.cubeWasSolved, 'isConnected:', this.ganConnection?.isConnected);
         
         // Check if cube is connected
         if (!this.ganConnection || !this.ganConnection.isConnected) {
@@ -1064,11 +1117,9 @@ class CubePracticeApp {
         }
         
         if (state === TIMER_STATE.IDLE) {
-            console.log('Starting scrambling phase...');
             this.timer.startScrambling();
             this.updateTimerUI();
         } else {
-            console.log('Timer cannot start. Current state:', state);
             alert(`Timer cannot start. Current state: ${state}`);
         }
     }
@@ -1116,7 +1167,6 @@ class CubePracticeApp {
             
             // Request facelets when solving starts to check initial phase state
             if (this.ganConnection && this.ganConnection.isConnected) {
-                console.log('Solving started, requesting initial facelets for phase detection');
                 setTimeout(() => {
                     if (this.timer.getState() === TIMER_STATE.SOLVING) {
                         this.ganConnection.requestFacelets();
@@ -1243,9 +1293,6 @@ class CubePracticeApp {
     }
     
     handleSolveComplete(solve) {
-        // Show notification or update UI
-        console.log('Solve completed:', solve);
-        
         // Celebrate with confetti!
         triggerConfetti('celebration');
         

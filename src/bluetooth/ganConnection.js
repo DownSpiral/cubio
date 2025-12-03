@@ -375,7 +375,6 @@ export class GanConnection {
             }
             
             if (!this.connectGanCubeFromDevice) {
-                console.log('Auto-reconnect: connectGanCubeFromDevice not available; skipping auto-reconnect');
                 this.hideReconnectToast();
                 return false;
             }
@@ -383,7 +382,6 @@ export class GanConnection {
             // Find the previously paired device
             const device = await this.checkForPreviouslyPairedDevice();
             if (!device) {
-                console.log('Auto-reconnect: No previously paired device found');
                 this.hideReconnectToast();
                 return false;
             }
@@ -393,7 +391,6 @@ export class GanConnection {
                 await this.watchAndConnectGatt(device);
             } catch (gattError) {
                 // GATT connection failed - device might not be in range
-                console.log('Auto-reconnect: GATT connection failed:', gattError.message);
                 this.hideReconnectToast();
                 return false;
             }
@@ -452,12 +449,7 @@ export class GanConnection {
             // Hide toast on error
             this.hideReconnectToast();
             
-            // Log error but don't throw - auto-reconnect failures are expected
-            if (error.message && error.message.includes('Timeout')) {
-                console.log('Auto-reconnect: Device not responding - ensure cube is powered on and in range');
-            } else {
-                console.log('Auto-reconnect failed:', error.message || error);
-            }
+            // Auto-reconnect failures are expected and don't need logging
             this.isConnected = false;
             return false;
         }

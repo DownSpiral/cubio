@@ -133,18 +133,6 @@ export async function detectCross(facelets, crossFace) {
         const faceStart = faceIndex * 9;
         const crossFaceStickers = facelets.substring(faceStart, faceStart + 9);
         
-        console.log(`detectCross - crossFace: ${crossFace} -> visualFace: ${visualFace}, faceIndex: ${faceIndex}`);
-        
-        // Log the full facelet string to understand the format
-        console.log(`detectCross - faceIndex: ${faceIndex}, faceStart: ${faceStart}`);
-        console.log(`detectCross - D face stickers: ${crossFaceStickers}`);
-        console.log(`detectCross - D face layout:`);
-        console.log(`  ${crossFaceStickers[0]} ${crossFaceStickers[1]} ${crossFaceStickers[2]}`);
-        console.log(`  ${crossFaceStickers[3]} ${crossFaceStickers[4]} ${crossFaceStickers[5]}`);
-        console.log(`  ${crossFaceStickers[6]} ${crossFaceStickers[7]} ${crossFaceStickers[8]}`);
-        console.log(`detectCross - Full facelets (first 27): ${facelets.substring(0, 27)}`);
-        console.log(`detectCross - Full facelets (next 27): ${facelets.substring(27, 54)}`);
-        
         // Check edge positions on the cross face (positions 1, 3, 5, 7)
         // All should have the cross face color
         const edgePositions = [1, 3, 5, 7];
@@ -152,7 +140,6 @@ export async function detectCross(facelets, crossFace) {
         for (const pos of edgePositions) {
             const stickerColor = crossFaceStickers[pos];
             if (stickerColor !== crossFaceColor) {
-                console.log(`detectCross - edge at position ${pos} on ${visualFace} face (cross ${crossFace}) is ${stickerColor}, expected ${crossFaceColor}`);
                 allEdgesCorrect = false;
                 break;
             }
@@ -166,9 +153,6 @@ export async function detectCross(facelets, crossFace) {
         // We don't need to check adjacent faces for cross completion
         // (adjacent face checking would verify edge orientation, but cross is complete
         //  if all 4 edges have the cross color on the cross face)
-        console.log('detectCross - all 4 cross edges have correct color on', visualFace, 'face (cross', crossFace, ')');
-        
-        console.log('detectCross - cross is complete on', crossFace, 'face!');
         return true;
     } catch (error) {
         console.error('Error detecting cross:', error);
@@ -189,10 +173,7 @@ export async function detectF2LPair(facelets, crossFace, pairIndex) {
         const edges = pattern.patternData.EDGES;
         const pairs = getF2LPairs(visualCrossFace);
         
-        console.log(`detectF2LPair - crossFace: ${crossFace}, visualCrossFace: ${visualCrossFace}, pairIndex: ${pairIndex}`);
-        
         if (pairIndex < 0 || pairIndex >= pairs.length) {
-            console.log(`detectF2LPair - invalid pairIndex: ${pairIndex}, pairs.length: ${pairs.length}`);
             return false;
         }
         
@@ -200,47 +181,33 @@ export async function detectF2LPair(facelets, crossFace, pairIndex) {
         const cornerName = pair.corner;
         const edgeName = pair.edge;
         
-        console.log(`detectF2LPair - checking pair ${pairIndex}: corner=${cornerName}, edge=${edgeName}`);
-        
         // Find corner index
         const cornerIndex = REID_CORNER_ORDER.indexOf(cornerName);
         if (cornerIndex === -1) {
-            console.log(`detectF2LPair - corner ${cornerName} not found in REID_CORNER_ORDER`);
             return false;
         }
         
         // Find edge index
         const edgeIndex = REID_EDGE_ORDER.indexOf(edgeName);
         if (edgeIndex === -1) {
-            console.log(`detectF2LPair - edge ${edgeName} not found in REID_EDGE_ORDER`);
             return false;
         }
-        
-        console.log(`detectF2LPair - cornerIndex: ${cornerIndex}, edgeIndex: ${edgeIndex}`);
-        console.log(`detectF2LPair - corner piece at ${cornerIndex}: ${corners.pieces[cornerIndex]}, orientation: ${corners.orientation[cornerIndex]}`);
-        console.log(`detectF2LPair - edge piece at ${edgeIndex}: ${edges.pieces[edgeIndex]}, orientation: ${edges.orientation[edgeIndex]}`);
         
         // Check if corner is in correct position and oriented
         if (corners.pieces[cornerIndex] !== cornerIndex) {
-            console.log(`detectF2LPair - corner ${cornerName} not in correct position (expected ${cornerIndex}, got ${corners.pieces[cornerIndex]})`);
             return false;
         }
         if (corners.orientation[cornerIndex] !== 0) {
-            console.log(`detectF2LPair - corner ${cornerName} not correctly oriented (got ${corners.orientation[cornerIndex]})`);
             return false;
         }
         
         // Check if edge is in correct position and oriented
         if (edges.pieces[edgeIndex] !== edgeIndex) {
-            console.log(`detectF2LPair - edge ${edgeName} not in correct position (expected ${edgeIndex}, got ${edges.pieces[edgeIndex]})`);
             return false;
         }
         if (edges.orientation[edgeIndex] !== 0) {
-            console.log(`detectF2LPair - edge ${edgeName} not correctly oriented (got ${edges.orientation[edgeIndex]})`);
             return false;
         }
-        
-        console.log(`detectF2LPair - pair ${pairIndex} (${cornerName}/${edgeName}) is complete!`);
         return true;
     } catch (error) {
         console.error('Error detecting F2L pair:', error);
@@ -319,11 +286,8 @@ export async function detectCFOPPhases(facelets, crossFace) {
         return completedPhases;
     }
     
-    console.log('detectCFOPPhases called with crossFace:', crossFace);
-    
     // Check phases in order
     const crossComplete = await detectCross(facelets, crossFace);
-    console.log('Cross detection result:', crossComplete);
     
     if (crossComplete) {
         completedPhases.push('Cross');
@@ -332,7 +296,6 @@ export async function detectCFOPPhases(facelets, crossFace) {
         let solvedPairsCount = 0;
         for (let i = 0; i < 4; i++) {
             const pairComplete = await detectF2LPair(facelets, crossFace, i);
-            console.log(`F2L-${i + 1} detection result:`, pairComplete);
             if (pairComplete) {
                 solvedPairsCount++;
             }
@@ -346,21 +309,17 @@ export async function detectCFOPPhases(facelets, crossFace) {
         // Check if all F2L pairs are complete before checking OLL
         if (solvedPairsCount === 4) {
             const ollComplete = await detectOLL(facelets, crossFace);
-            console.log('OLL detection result:', ollComplete);
             if (ollComplete) {
                 completedPhases.push('OLL');
                 
                 // Check PLL
                 const pllComplete = detectPLL(facelets);
-                console.log('PLL detection result:', pllComplete);
                 if (pllComplete) {
                     completedPhases.push('PLL');
                 }
             }
         }
     }
-    
-    console.log('Final completed phases:', completedPhases);
     return completedPhases;
 }
 

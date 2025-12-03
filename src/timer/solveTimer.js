@@ -132,8 +132,6 @@ export class SolveTimer {
         this.currentPhase = 'Pre-Cross';
         this.phaseStartTimes.set('Pre-Cross', this.startTime);
         
-        console.log('Starting solve, crossFace:', this.crossFace, 'solveMethod:', this.solveMethod);
-        
         this.notifyStateChange();
 
         // Clear inspection interval
@@ -204,20 +202,16 @@ export class SolveTimer {
      */
     async checkPhaseCompletion(facelets) {
         if (this.state !== TIMER_STATE.SOLVING || !this.currentSolve) {
-            console.log('Phase check skipped - state:', this.state, 'hasSolve:', !!this.currentSolve);
             return;
         }
         
         try {
-            console.log('Checking phase completion, crossFace:', this.crossFace, 'facelets length:', facelets?.length);
             // Detect completed phases
             const completed = await detectCFOPPhases(facelets, this.crossFace);
-            console.log('Detected completed phases:', completed);
             
             // Check for new phase completions
             for (const phaseName of completed) {
                 if (!this.completedPhases.has(phaseName)) {
-                    console.log('New phase completed:', phaseName);
                     // Phase just completed
                     this.completePhase(phaseName);
                 }
@@ -228,7 +222,6 @@ export class SolveTimer {
             
         } catch (error) {
             console.error('Error checking phase completion:', error);
-            console.error('Error stack:', error.stack);
         }
     }
     
