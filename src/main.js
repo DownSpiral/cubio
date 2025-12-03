@@ -868,7 +868,12 @@ class CubePracticeApp {
         
         // If trainer is active, process the transformed move (trainer expects visual orientation)
         if (this.trainer && this.trainer.isActive) {
-            this.trainer.processMove(transformedMove);
+            const result = this.trainer.processMove(transformedMove);
+            
+            // Check if correction is complete
+            if (result && result.correctionComplete) {
+                this.hideCorrectionOverlay();
+            }
         }
         
         // Timer logic: Handle different states (only when on timer view)
@@ -1056,17 +1061,15 @@ class CubePracticeApp {
     resetTrainer() {
         this.trainer.reset();
         
-        // Update UI
-        document.getElementById('start-trainer-btn').style.display = 'block';
-        document.getElementById('reset-trainer-btn').style.display = 'none';
-        document.querySelector('.progress-bar').style.display = 'none';
-        
-        if (this.currentScramble) {
-            this.displaySequence(this.currentScramble.split(' '), []);
-        } else {
-            document.getElementById('sequence-display').innerHTML = 
-                '<div style="color: #64748b; text-align: center; padding: 20px;">Start trainer to see moves</div>';
+        // Hide any open overlays/modals
+        this.hideCorrectionOverlay();
+        const accuracyModal = document.getElementById('accuracy-modal');
+        if (accuracyModal) {
+            accuracyModal.style.display = 'none';
         }
+        
+        // Automatically start a new session
+        this.startTrainer();
     }
     
     updateProgress(progress, sequence) {
@@ -1097,10 +1100,54 @@ class CubePracticeApp {
     
     handleTrainerComplete() {
         triggerConfetti('celebration');
+        
+        // Calculate and display accuracy summary in the sequence display
+        const accuracy = this.trainer.getAccuracy();
+        this.showAccuracySummary(accuracy);
     }
     
     handleTrainerError(error) {
-        // Error is already handled in processMove
+        // Show correction overlay with the correction sequence
+        if (error.correctionSequence) {
+            this.showCorrectionOverlay(error.correctionSequence);
+        }
+    }
+    
+    showCorrectionOverlay(correctionSequence) {
+        const overlay = document.getElementById('correction-overlay');
+        const sequenceEl = document.getElementById('correction-sequence');
+        
+        if (overlay && sequenceEl) {
+            sequenceEl.textContent = correctionSequence;
+            overlay.style.display = 'flex';
+        }
+    }
+    
+    hideCorrectionOverlay() {
+        const overlay = document.getElementById('correction-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+    
+    showAccuracySummary(accuracy) {
+        // Replace the sequence display with accuracy summary
+        const displayEl = document.getElementById('sequence-display');
+        if (!displayEl) return;
+        
+        const accuracyRounded = Math.round(accuracy * 10) / 10;
+        const originalSequenceLength = this.trainer.originalSequence ? this.trainer.originalSequence.length : 0;
+        const correctCount = this.trainer.correctOnFirstTry ? this.trainer.correctOnFirstTry.filter(correct => correct).length : 0;
+        
+        displayEl.innerHTML = `
+            <div style="text-align: center; padding: 10px;">
+                <h3 style="color: #667eea; font-size: 1.5em;">Sequence Complete!</h3>
+                <div style="font-size: 4em; font-weight: 700; color: #667eea;">${accuracyRounded}%</div>
+                <div style="color: #94a3b8; font-size: 1.1em;">
+                    <div style="margin-bottom: 10px;">${correctCount} out of ${originalSequenceLength} moves correct on first try</div>
+                </div>
+            </div>
+        `;
     }
     
     /**

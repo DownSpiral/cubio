@@ -9,6 +9,7 @@ import { createSolvedCube, compareCubes } from '../cube/cubeState.js';
 export class NotationTrainer {
     constructor() {
         this.sequence = [];
+        this.originalSequence = []; // Store original sequence for accuracy calculation
         this.currentIndex = 0;
         this.expectedCubeState = null;
         this.isActive = false;
@@ -16,6 +17,11 @@ export class NotationTrainer {
         this.onCompleteCallback = null;
         this.onErrorCallback = null;
         this.pendingHalfMove = null; // Track when we're in the middle of a double move
+        this.correctOnFirstTry = []; // Track which moves were correct on first try
+        this.hasHadErrorAtPosition = []; // Track which positions have had errors (so we don't mark as correct on first try)
+        this.isInCorrectionMode = false; // Track if we're currently correcting an error
+        this.correctionSequence = []; // The sequence needed to correct the error
+        this.correctionIndex = 0; // Current position in correction sequence
     }
     
     /**
@@ -23,8 +29,14 @@ export class NotationTrainer {
      */
     start(sequenceString, initialCubeState = null) {
         this.sequence = parseNotation(sequenceString);
+        this.originalSequence = [...this.sequence]; // Store original for accuracy
         this.currentIndex = 0;
         this.isActive = true;
+        this.correctOnFirstTry = new Array(this.sequence.length).fill(false);
+        this.hasHadErrorAtPosition = new Array(this.sequence.length).fill(false);
+        this.isInCorrectionMode = false;
+        this.correctionSequence = [];
+        this.correctionIndex = 0;
         
         // Calculate expected cube state after each move
         const baseState = initialCubeState || createSolvedCube();
@@ -56,6 +68,11 @@ export class NotationTrainer {
     processMove(moveNotation) {
         if (!this.isActive) {
             return { success: false, message: 'Trainer not active' };
+        }
+        
+        // If we're in correction mode, handle correction moves first
+        if (this.isInCorrectionMode) {
+            return this.handleCorrectionMove(moveNotation);
         }
         
         if (this.currentIndex >= this.sequence.length) {
@@ -103,7 +120,10 @@ export class NotationTrainer {
         }
         
         if (normalizedMove === normalizedExpected) {
-            // Correct move
+            // Correct move - only mark as correct on first try if we haven't had an error at this position
+            if (!this.hasHadErrorAtPosition[this.currentIndex]) {
+                this.correctOnFirstTry[this.currentIndex] = true;
+            }
             this.currentIndex++;
             const result = {
                 success: true,
@@ -122,19 +142,22 @@ export class NotationTrainer {
             
             return result;
         } else {
-            // Incorrect move - calculate inverse
+            // Incorrect move - mark that we've had an error at this position
+            this.hasHadErrorAtPosition[this.currentIndex] = true;
+            // Enter correction mode
             const inverseMove = getInverseMove(moveNotation);
+            this.correctionSequence = parseNotation(inverseMove);
+            this.correctionIndex = 0;
+            this.isInCorrectionMode = true;
+            
             const correction = {
                 success: false,
                 correct: false,
                 move: moveNotation,
                 expectedMove: expectedMoveStr,
-                inverseMove: inverseMove,
+                correctionSequence: inverseMove,
                 progress: this.getProgress()
             };
-            
-            // Insert inverse move into sequence to correct state
-            this.insertCorrection(inverseMove);
             
             if (this.onErrorCallback) {
                 this.onErrorCallback(correction);
@@ -143,6 +166,79 @@ export class NotationTrainer {
             this.notifyProgress();
             
             return correction;
+        }
+    }
+    
+    /**
+     * Handle moves while in correction mode
+     */
+    handleCorrectionMove(moveNotation) {
+        if (this.correctionIndex >= this.correctionSequence.length) {
+            // Correction complete, exit correction mode
+            this.isInCorrectionMode = false;
+            this.correctionSequence = [];
+            this.correctionIndex = 0;
+            
+            // Continue with normal processing
+            return this.processMove(moveNotation);
+        }
+        
+        const expectedCorrectionMove = this.correctionSequence[this.correctionIndex];
+        const expectedCorrectionMoveStr = formatMove(expectedCorrectionMove);
+        const normalizedMove = this.normalizeMove(moveNotation);
+        const normalizedExpected = this.normalizeMove(expectedCorrectionMoveStr);
+        
+        if (normalizedMove === normalizedExpected) {
+            // Correct correction move
+            this.correctionIndex++;
+            
+            // Check if correction is complete
+            if (this.correctionIndex >= this.correctionSequence.length) {
+                // Correction complete, exit correction mode
+                this.isInCorrectionMode = false;
+                this.correctionSequence = [];
+                this.correctionIndex = 0;
+                
+                return {
+                    success: true,
+                    correct: true,
+                    move: moveNotation,
+                    expectedMove: expectedCorrectionMoveStr,
+                    progress: this.getProgress(),
+                    isComplete: false,
+                    correctionComplete: true
+                };
+            }
+            
+            return {
+                success: true,
+                correct: true,
+                move: moveNotation,
+                expectedMove: expectedCorrectionMoveStr,
+                progress: this.getProgress(),
+                isComplete: false,
+                inCorrection: true,
+                correctionProgress: {
+                    current: this.correctionIndex,
+                    total: this.correctionSequence.length
+                }
+            };
+        } else {
+            // Incorrect correction move - need to correct this too
+            const inverseMove = getInverseMove(moveNotation);
+            const inverseParsed = parseNotation(inverseMove);
+            
+            // Insert the inverse at the current correction position
+            this.correctionSequence.splice(this.correctionIndex, 0, ...inverseParsed);
+            
+            return {
+                success: false,
+                correct: false,
+                move: moveNotation,
+                expectedMove: expectedCorrectionMoveStr,
+                progress: this.getProgress(),
+                inCorrection: true
+            };
         }
     }
     
@@ -173,6 +269,10 @@ export class NotationTrainer {
                 // Combine the two moves to form the double move
                 const combinedMove = `${performedBase}2`;
                 
+                // Mark as correct on first try only if we haven't had an error at this position
+                if (!this.hasHadErrorAtPosition[this.currentIndex]) {
+                    this.correctOnFirstTry[this.currentIndex] = true;
+                }
                 this.currentIndex++;
                 const result = {
                     success: true,
@@ -194,45 +294,54 @@ export class NotationTrainer {
         }
         
         // The second move doesn't match - treat first move as incorrect
-        // Insert inverse of first move
+        // Mark that we've had an error at this position
+        this.hasHadErrorAtPosition[this.currentIndex] = true;
+        // Enter correction mode with inverse of first move
         const firstInverse = getInverseMove(firstMove);
-        this.insertCorrection(firstInverse);
+        this.correctionSequence = parseNotation(firstInverse);
+        this.correctionIndex = 0;
+        this.isInCorrectionMode = true;
         
-        // Now process the second move normally
+        // Now process the second move normally (but we're in correction mode)
         const currentExpectedMove = this.sequence[this.currentIndex];
         const expectedMoveStr = formatMove(currentExpectedMove);
         const normalizedExpected = this.normalizeMove(expectedMoveStr);
         
         if (normalizedMove === normalizedExpected) {
-            // Second move is correct
-            this.currentIndex++;
-            const result = {
-                success: true,
-                correct: true,
-                move: moveNotation,
-                expectedMove: expectedMoveStr,
-                progress: this.getProgress(),
-                isComplete: this.currentIndex >= this.sequence.length
+            // Second move is correct, but we still need to complete correction
+            // This shouldn't happen normally, but handle it
+            const correction = {
+                success: false,
+                correct: false,
+                move: firstMove,
+                expectedMove: expectedMove,
+                correctionSequence: firstInverse,
+                progress: this.getProgress()
             };
+            
+            if (this.onErrorCallback) {
+                this.onErrorCallback(correction);
+            }
             
             this.notifyProgress();
             
-            if (result.isComplete && this.onCompleteCallback) {
-                this.onCompleteCallback();
-            }
-            
-            return result;
+            return correction;
         } else {
-            // Second move is also incorrect
-            const inverseMove = getInverseMove(moveNotation);
-            this.insertCorrection(inverseMove);
+            // Second move is also incorrect - need to correct both
+            const secondInverse = getInverseMove(moveNotation);
+            // Combine corrections: first inverse, then second inverse
+            const firstInverseParsed = parseNotation(firstInverse);
+            const secondInverseParsed = parseNotation(secondInverse);
+            this.correctionSequence = [...firstInverseParsed, ...secondInverseParsed];
+            this.correctionIndex = 0;
+            this.isInCorrectionMode = true;
             
             const correction = {
                 success: false,
                 correct: false,
                 move: moveNotation,
                 expectedMove: expectedMoveStr,
-                inverseMove: inverseMove,
+                correctionSequence: `${firstInverse} ${secondInverse}`,
                 progress: this.getProgress()
             };
             
@@ -275,17 +384,25 @@ export class NotationTrainer {
     }
     
     /**
-     * Insert correction move (inverse) into sequence
+     * Get accuracy percentage based on moves correct on first try
      */
-    insertCorrection(inverseMove) {
-        // Insert the inverse move right after current position
-        // This will undo the incorrect move
-        const inverseParsed = parseNotation(inverseMove);
-        this.sequence.splice(this.currentIndex, 0, ...inverseParsed);
+    getAccuracy() {
+        if (this.originalSequence.length === 0) {
+            return 0;
+        }
         
-        // Recalculate expected states
-        const baseState = this.expectedCubeState[0];
-        this.expectedCubeState = this.calculateExpectedStates(baseState);
+        const correctCount = this.correctOnFirstTry.filter(correct => correct).length;
+        return (correctCount / this.originalSequence.length) * 100;
+    }
+    
+    /**
+     * Get correction sequence string (for display)
+     */
+    getCorrectionSequenceString() {
+        if (this.correctionSequence.length === 0) {
+            return '';
+        }
+        return this.correctionSequence.map(move => formatMove(move)).join(' ');
     }
     
     /**
@@ -341,10 +458,16 @@ export class NotationTrainer {
      */
     reset() {
         this.sequence = [];
+        this.originalSequence = [];
         this.currentIndex = 0;
         this.isActive = false;
         this.expectedCubeState = null;
         this.pendingHalfMove = null;
+        this.correctOnFirstTry = [];
+        this.hasHadErrorAtPosition = [];
+        this.isInCorrectionMode = false;
+        this.correctionSequence = [];
+        this.correctionIndex = 0;
         this.notifyProgress();
     }
     
