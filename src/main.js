@@ -3,7 +3,7 @@
  * Coordinates all components
  * Uses TwistyPlayer from cubing library (matching gan-cube-sample implementation)
  */
-
+import { Alg } from 'cubing/alg';
 import { TwistyPlayer } from 'cubing/twisty';
 import { experimentalSolve3x3x3IgnoringCenters } from 'cubing/search';
 import { GanConnection } from './bluetooth/ganConnection.js';
@@ -11,13 +11,14 @@ import { NotationTrainer } from './trainer/notationTrainer.js';
 import { generateScramble } from './utils/scrambler.js';
 import { faceletsToPattern, patternToFacelets } from './utils/faceletsUtils.js';
 import { SolveTimer, TIMER_STATE } from './timer/solveTimer.js';
+import { algorithms } from './algorithms/algorithms.js';
 import confetti from 'canvas-confetti';
 
 const SOLVED_STATE = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
 
 /**
  * Trigger confetti animation
- * @param {string} type - Type of confetti: 'celebration', 'success', 'info'
+ * @param {string} type - Type of confetti: 'celebration', 'success', 'info', 'super'
  */
 function triggerConfetti(type = 'celebration') {
     const defaults = {
@@ -26,7 +27,91 @@ function triggerConfetti(type = 'celebration') {
         origin: { y: 0.6 }
     };
     
-    if (type === 'celebration') {
+    if (type === 'super') {
+        // Super confetti - runs for a full minute with continuous bursts
+        const superColors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#ff6b6b', '#4ecdc4', '#ffe66d', '#a8e6cf'];
+        const duration = 60000; // 60 seconds in milliseconds
+        const interval = 200; // Burst every 200ms for continuous effect
+        const startTime = Date.now();
+        
+        // Function to create a burst
+        const createBurst = () => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= duration) {
+                return; // Stop after 60 seconds
+            }
+            
+            // Vary the burst patterns for visual interest
+            const pattern = Math.floor((elapsed / 1000) % 4);
+            
+            switch (pattern) {
+                case 0:
+                    // Burst from left
+                    confetti({
+                        particleCount: 150,
+                        angle: 60,
+                        spread: 70,
+                        origin: { x: 0, y: 0.6 },
+                        colors: superColors,
+                        ticks: 400,
+                        decay: 0.9
+                    });
+                    break;
+                case 1:
+                    // Burst from right
+                    confetti({
+                        particleCount: 150,
+                        angle: 120,
+                        spread: 70,
+                        origin: { x: 1, y: 0.6 },
+                        colors: superColors,
+                        ticks: 400,
+                        decay: 0.9
+                    });
+                    break;
+                case 2:
+                    // Burst from center
+                    confetti({
+                        particleCount: 200,
+                        angle: 90,
+                        spread: 80,
+                        origin: { x: 0.5, y: 0.5 },
+                        colors: superColors,
+                        ticks: 400,
+                        decay: 0.9
+                    });
+                    break;
+                case 3:
+                    // Burst from both sides simultaneously
+                    confetti({
+                        particleCount: 120,
+                        angle: 60,
+                        spread: 65,
+                        origin: { x: 0, y: 0.6 },
+                        colors: superColors,
+                        ticks: 400,
+                        decay: 0.9
+                    });
+                    confetti({
+                        particleCount: 120,
+                        angle: 120,
+                        spread: 65,
+                        origin: { x: 1, y: 0.6 },
+                        colors: superColors,
+                        ticks: 400,
+                        decay: 0.9
+                    });
+                    break;
+            }
+            
+            // Schedule next burst
+            setTimeout(createBurst, interval);
+        };
+        
+        // Start the continuous bursts
+        createBurst();
+        
+    } else if (type === 'celebration') {
         // Big celebration confetti - multiple bursts for longer celebration
         const celebrationColors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140'];
         
@@ -143,6 +228,30 @@ function transformMoveForSetup(move) {
     return transformedFace + wide + modifier;
 }
 
+/**
+ * Get stickering mask for a given stickering type
+ * @param {string} stickeringType - 'OLL', 'PLL', or 'F2L'
+ * @returns {string} Stickering mask string for TwistyPlayer
+ */
+function getStickeringMask(stickeringType) {
+    switch (stickeringType) {
+        case 'OLL':
+            // Highlight top layer (U face edges and corners)
+            // Top 4 edges (UF, UR, UB, UL) and top 4 corners (UFR, URB, UBL, ULF)
+            return 'EDGES:IIII--------,CORNERS:IIII----,CENTERS:------';
+        case 'PLL':
+            // Highlight top layer (U face edges and corners) - same as OLL
+            return 'EDGES:IIII--------,CORNERS:IIII----,CENTERS:------';
+        case 'F2L':
+            // Highlight F2L pairs (bottom layer corners and edges)
+            // Bottom 4 edges (DF, DR, DB, DL) and bottom 4 corners (DRF, DFL, DLB, DBR)
+            return 'EDGES:--------IIII,CORNERS:----IIII,CENTERS:------';
+        default:
+            // Show all pieces
+            return 'EDGES:------------,CORNERS:--------,CENTERS:------';
+    }
+}
+
 class CubePracticeApp {
     constructor() {
         this.twistyPlayer = null;
@@ -157,13 +266,16 @@ class CubePracticeApp {
         this.cubeWasSolved = false; // Track if cube was in solved state before last move
         this.solveCheckTimeout = null; // Timeout for checking if cube is solved
         this.currentView = 'timer-view'; // Track current active view
+        this.selectedAlgorithm = null; // Currently selected algorithm for practice
+        this.isPracticeMode = false; // Whether we're in algorithm practice mode
         
         // Map view IDs to URL hash values
         this.viewHashMap = {
             'timer-view': 'timer',
             'trainer-view': 'trainer',
             'cross-practice-view': 'cross-practice',
-            'history-view': 'history'
+            'history-view': 'history',
+            'algorithm-explorer-view': 'algorithms'
         };
         
         // Reverse map for hash to view ID
@@ -418,6 +530,18 @@ class CubePracticeApp {
         // Reset cube button
         const resetCubeBtn = document.getElementById('reset-cube-btn');
         resetCubeBtn.addEventListener('click', () => this.resetCube());
+        
+        // Practice algorithm button
+        const practiceAlgorithmBtn = document.getElementById('practice-algorithm-btn');
+        if (practiceAlgorithmBtn) {
+            practiceAlgorithmBtn.addEventListener('click', () => this.startPracticeMode());
+        }
+        
+        // Exit practice button
+        const exitPracticeBtn = document.getElementById('exit-practice-btn');
+        if (exitPracticeBtn) {
+            exitPracticeBtn.addEventListener('click', () => this.exitPracticeMode());
+        }
     }
     
     setupNavigationDrawer() {
@@ -540,6 +664,11 @@ class CubePracticeApp {
     }
     
     switchContentView(viewId) {
+        // If switching away from algorithm explorer view and in practice mode, exit practice mode
+        if (this.currentView === 'algorithm-explorer-view' && this.isPracticeMode && viewId !== 'algorithm-explorer-view') {
+            this.exitPracticeMode();
+        }
+        
         // Hide all views
         const views = document.querySelectorAll('.view-content');
         views.forEach(view => view.classList.remove('active'));
@@ -578,6 +707,11 @@ class CubePracticeApp {
             // If switching to history view, refresh it
             if (viewId === 'history-view') {
                 this.showHistoryInline();
+            }
+            
+            // If switching to algorithm explorer view, render algorithms
+            if (viewId === 'algorithm-explorer-view') {
+                this.renderAlgorithms();
             }
         }
     }
@@ -863,6 +997,24 @@ class CubePracticeApp {
         // Transform move from physical cube orientation to visual orientation
         const transformedMove = transformMoveForSetup(move);
         
+        // In practice mode, only handle trainer logic and skip state checks
+        if (this.isPracticeMode) {
+            // Apply move directly to TwistyPlayer
+            this.twistyPlayer.experimentalAddMove(transformedMove, { cancel: false });
+            
+            // Process move through trainer for validation
+            if (this.trainer && this.trainer.isActive) {
+                const result = this.trainer.processMove(transformedMove);
+                
+                // Check if correction is complete
+                if (result && result.correctionComplete) {
+                    this.hideCorrectionOverlay();
+                }
+            }
+            // Don't process timer or other state-dependent features in practice mode
+            return;
+        }
+        
         // Apply move directly to TwistyPlayer (matching gan-cube-sample)
         this.twistyPlayer.experimentalAddMove(transformedMove, { cancel: false });
         
@@ -993,6 +1145,14 @@ class CubePracticeApp {
     }
     
     async startTrainer() {
+        // Clean up any existing pending facelets promise
+        if (this.pendingFaceletsResolver) {
+            this.pendingFaceletsResolver = null;
+        }
+        if (this.pendingFaceletsPromise) {
+            this.pendingFaceletsPromise = null;
+        }
+        
         // Check if cube is solved by requesting facelets from the cube
         let scramble;
         
@@ -1027,7 +1187,13 @@ class CubePracticeApp {
                     // Transform each move in the solution to account for x2 y2 setup
                     const solutionMoves = solutionString.split(' ').filter(m => m.trim());
                     const transformedMoves = solutionMoves.map(move => transformMoveForSetup(move));
-                    scramble = transformedMoves.join(' ');
+                    
+                    // If solution is less than 10 moves, use a scramble sequence instead
+                    if (transformedMoves.length < 10) {
+                        scramble = generateScramble(25, this.selectedScrambleMethod);
+                    } else {
+                        scramble = transformedMoves.join(' ');
+                    }
                 }
             } else {
                 // Cube not connected, generate a random scramble
@@ -1061,6 +1227,14 @@ class CubePracticeApp {
     resetTrainer() {
         this.trainer.reset();
         
+        // Clean up any pending facelets promise before starting a new session
+        if (this.pendingFaceletsResolver) {
+            this.pendingFaceletsResolver = null;
+        }
+        if (this.pendingFaceletsPromise) {
+            this.pendingFaceletsPromise = null;
+        }
+        
         // Hide any open overlays/modals
         this.hideCorrectionOverlay();
         const accuracyModal = document.getElementById('accuracy-modal');
@@ -1073,20 +1247,53 @@ class CubePracticeApp {
     }
     
     updateProgress(progress, sequence) {
-        // Update progress bar
-        const progressFill = document.getElementById('progress-fill');
-        progressFill.style.width = `${progress.percentage}%`;
-        
-        // Update sequence display
-        this.displaySequence(
-            sequence.map(s => s.move),
-            sequence.map(s => s.status)
-        );
+        // Update progress bar - check if in practice mode
+        if (this.isPracticeMode) {
+            const practiceProgressFill = document.getElementById('practice-progress-fill');
+            const practiceProgressBar = practiceProgressFill?.parentElement;
+            if (practiceProgressFill) {
+                practiceProgressFill.style.width = `${progress.percentage}%`;
+            }
+            if (practiceProgressBar) {
+                practiceProgressBar.style.display = 'block';
+            }
+            
+            // Update practice sequence display
+            const practiceSequenceDisplay = document.getElementById('practice-sequence-display');
+            const practiceSequenceSection = document.getElementById('practice-sequence-section');
+            if (practiceSequenceDisplay) {
+                this.displaySequenceInElement(
+                    practiceSequenceDisplay,
+                    sequence.map(s => s.move),
+                    sequence.map(s => s.status)
+                );
+            }
+            if (practiceSequenceSection) {
+                practiceSequenceSection.style.display = 'block';
+            }
+        } else {
+            // Update regular progress bar
+            const progressFill = document.getElementById('progress-fill');
+            if (progressFill) {
+                progressFill.style.width = `${progress.percentage}%`;
+            }
+            
+            // Update regular sequence display
+            this.displaySequence(
+                sequence.map(s => s.move),
+                sequence.map(s => s.status)
+            );
+        }
     }
     
     displaySequence(moves, statuses) {
         const displayEl = document.getElementById('sequence-display');
-        
+        if (displayEl) {
+            this.displaySequenceInElement(displayEl, moves, statuses);
+        }
+    }
+    
+    displaySequenceInElement(displayEl, moves, statuses) {
         if (moves.length === 0) {
             displayEl.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px;">No moves to display</div>';
             return;
@@ -1099,11 +1306,25 @@ class CubePracticeApp {
     }
     
     handleTrainerComplete() {
-        triggerConfetti('celebration');
-        
         // Calculate and display accuracy summary in the sequence display
         const accuracy = this.trainer.getAccuracy();
-        this.showAccuracySummary(accuracy);
+        
+        // If we got 100% accuracy, shoot super confetti for a full minute!
+        if (accuracy >= 100) {
+            triggerConfetti('super');
+        } else {
+            triggerConfetti('celebration');
+        }
+        
+        if (this.isPracticeMode) {
+            // Show accuracy in practice sequence display
+            this.showAccuracySummaryInElement(
+                document.getElementById('practice-sequence-display'),
+                accuracy
+            );
+        } else {
+            this.showAccuracySummary(accuracy);
+        }
     }
     
     handleTrainerError(error) {
@@ -1131,8 +1352,13 @@ class CubePracticeApp {
     }
     
     showAccuracySummary(accuracy) {
-        // Replace the sequence display with accuracy summary
         const displayEl = document.getElementById('sequence-display');
+        if (displayEl) {
+            this.showAccuracySummaryInElement(displayEl, accuracy);
+        }
+    }
+    
+    showAccuracySummaryInElement(displayEl, accuracy) {
         if (!displayEl) return;
         
         const accuracyRounded = Math.round(accuracy * 10) / 10;
@@ -1641,6 +1867,194 @@ class CubePracticeApp {
         } catch (error) {
             console.error('Error resetting cube:', error);
             alert(`Failed to reset cube: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Render algorithm list in the algorithm explorer view
+     */
+    renderAlgorithms() {
+        const explorerView = document.getElementById('algorithm-explorer-view');
+        if (!explorerView) return;
+        
+        const algorithmList = document.getElementById('algorithm-list');
+        if (!algorithmList) return;
+        
+        algorithmList.innerHTML = algorithms.map((alg, index) => {
+            const isSelected = this.selectedAlgorithm && this.selectedAlgorithm.name === alg.name;
+            return `
+                <div class="algorithm-card ${isSelected ? 'selected' : ''}" data-algorithm-index="${index}">
+                    <div class="algorithm-card-header">
+                        <h3 class="algorithm-name">${alg.name}</h3>
+                        <span class="algorithm-category">${alg.category}</span>
+                    </div>
+                    <div class="algorithm-notation">${alg.notation}</div>
+                    ${alg.setup ? `<div class="algorithm-setup">Setup: ${alg.setup}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        // Add click listeners to algorithm cards
+        algorithmList.querySelectorAll('.algorithm-card').forEach((card, index) => {
+            card.addEventListener('click', () => {
+                this.selectAlgorithm(algorithms[index]);
+            });
+        });
+    }
+    
+    /**
+     * Select an algorithm and display it on the cube
+     * @param {Object} algorithm - Algorithm object to select
+     */
+    selectAlgorithm(algorithm) {
+        this.selectedAlgorithm = algorithm;
+        
+        // Update visual feedback
+        this.renderAlgorithms();
+        
+        // Build full algorithm string (setup + algorithm)
+        let fullAlg = '';
+        if (algorithm.setup && algorithm.setup.trim()) {
+            fullAlg = new Alg(algorithm.setup + ' ' + algorithm.notation);
+        } else {
+            fullAlg = new Alg(algorithm.notation);
+        }
+
+        
+        // Apply stickering mask
+        const mask = algorithm.stickeringType;
+        this.twistyPlayer.alg = 'x2 y2';
+        this.twistyPlayer.experimentalStickering = mask;
+        this.twistyPlayer.alg = fullAlg.invert();
+        // this.twistyPlayer.experimentalSetupAnchor = 'start';
+        
+        // Show practice button
+        const practiceBtn = document.getElementById('practice-algorithm-btn');
+        if (practiceBtn) {
+            practiceBtn.style.display = 'block';
+        }
+    }
+    
+    /**
+     * Start practice mode for the selected algorithm
+     */
+    startPracticeMode() {
+        if (!this.selectedAlgorithm) {
+            alert('Please select an algorithm first.');
+            return;
+        }
+        
+        // Check if cube is connected
+        if (!this.ganConnection || !this.ganConnection.isConnected) {
+            alert('Please connect your cube first.');
+            return;
+        }
+        
+        this.isPracticeMode = true;
+        
+        // Reset virtual cube to solved state
+        this.twistyPlayer.alg = '';
+        
+        // Build full sequence (setup + algorithm) for trainer
+        let fullSequence = '';
+        if (this.selectedAlgorithm.setup && this.selectedAlgorithm.setup.trim()) {
+            fullSequence = this.selectedAlgorithm.setup + ' ' + this.selectedAlgorithm.notation;
+        } else {
+            fullSequence = this.selectedAlgorithm.notation;
+        }
+        
+        // Apply only setup to show starting position (user will perform algorithm from here)
+        // If no setup, cube stays solved
+        if (this.selectedAlgorithm.setup && this.selectedAlgorithm.setup.trim()) {
+            this.twistyPlayer.alg = this.selectedAlgorithm.setup;
+        } else {
+            this.twistyPlayer.alg = '';
+        }
+        
+        // Apply stickering mask
+        const mask = getStickeringMask(this.selectedAlgorithm.stickeringType);
+        let oldAlg = this.twistyPlayer.experimentalGet.alg();
+        this.twistyPlayer.alg = '';
+        this.twistyPlayer.experimentalStickeringMaskOrbits = mask;
+        this.twistyPlayer.alg = oldAlg;
+        this.twistyPlayer.experimentalSetupAnchor = 'start';
+        
+        // Start trainer with the full sequence (setup + algorithm)
+        // Trainer will track user's moves against this sequence
+        this.trainer.start(fullSequence, null);
+        
+        // Update UI
+        document.getElementById('practice-algorithm-btn').style.display = 'none';
+        document.getElementById('exit-practice-btn').style.display = 'block';
+        
+        // Show algorithm info in content view
+        const algorithmInfo = document.getElementById('practice-algorithm-info');
+        if (algorithmInfo) {
+            algorithmInfo.innerHTML = `
+                <div class="control-section">
+                    <h2>Practicing: ${this.selectedAlgorithm.name}</h2>
+                    <div class="algorithm-notation-display">${this.selectedAlgorithm.notation}</div>
+                    ${this.selectedAlgorithm.setup ? `<div class="algorithm-setup-display">Setup: ${this.selectedAlgorithm.setup}</div>` : ''}
+                </div>
+            `;
+            algorithmInfo.style.display = 'block';
+        }
+        
+        // Show practice sequence section
+        const practiceSequenceSection = document.getElementById('practice-sequence-section');
+        if (practiceSequenceSection) {
+            practiceSequenceSection.style.display = 'block';
+        }
+    }
+    
+    /**
+     * Exit practice mode
+     */
+    exitPracticeMode() {
+        this.isPracticeMode = false;
+        
+        // Reset trainer
+        if (this.trainer) {
+            this.trainer.reset();
+        }
+        
+        // Hide correction overlay
+        this.hideCorrectionOverlay();
+        
+        // Reset cube visualization
+        if (this.selectedAlgorithm) {
+            // Show the algorithm again (non-practice view)
+            this.selectAlgorithm(this.selectedAlgorithm);
+        } else {
+            this.twistyPlayer.alg = '';
+            this.twistyPlayer.experimentalStickeringMaskOrbits = 'EDGES:------------,CORNERS:--------,CENTERS:------';
+        }
+        
+        // Update UI
+        document.getElementById('practice-algorithm-btn').style.display = this.selectedAlgorithm ? 'block' : 'none';
+        document.getElementById('exit-practice-btn').style.display = 'none';
+        
+        // Hide practice sequence section
+        const practiceSequenceSection = document.getElementById('practice-sequence-section');
+        if (practiceSequenceSection) {
+            practiceSequenceSection.style.display = 'none';
+        }
+        
+        const practiceProgressBar = document.getElementById('practice-progress-fill')?.parentElement;
+        if (practiceProgressBar) {
+            practiceProgressBar.style.display = 'none';
+        }
+        
+        // Hide algorithm info
+        const algorithmInfo = document.getElementById('practice-algorithm-info');
+        if (algorithmInfo) {
+            algorithmInfo.style.display = 'none';
+        }
+        
+        // Clear practice sequence display
+        const practiceSequenceDisplay = document.getElementById('practice-sequence-display');
+        if (practiceSequenceDisplay) {
+            practiceSequenceDisplay.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px;">Select an algorithm to practice</div>';
         }
     }
 }

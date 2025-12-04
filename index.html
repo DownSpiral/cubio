@@ -1052,6 +1052,112 @@
             color: #64748b;
         }
 
+        /* Algorithm Explorer Styles */
+        .algorithm-list {
+            display: grid;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .algorithm-card {
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .algorithm-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .algorithm-card.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .algorithm-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .algorithm-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin: 0;
+        }
+
+        .algorithm-category {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .algorithm-notation {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            color: #cbd5f5;
+            margin-top: 8px;
+        }
+
+        .algorithm-setup {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #94a3b8;
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        .algorithm-notation-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            color: #cbd5f5;
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .algorithm-setup-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            color: #94a3b8;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* Practice Button Styles */
+        .practice-algorithm-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            width: auto;
+            padding: 10px 20px;
+            font-size: 1em;
+        }
+
+        .exit-practice-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            width: auto;
+            padding: 10px 20px;
+            font-size: 1em;
+        }
+
     </style>
 </head>
 <body>
@@ -1067,6 +1173,8 @@
         <div class="main-content">
             <div class="cube-view">
                 <button id="connect-btn-cube" class="btn-primary connect-btn-cube">Connect to GAN Cube</button>
+                <button id="practice-algorithm-btn" class="btn-primary practice-algorithm-btn" style="display: none;">Practice</button>
+                <button id="exit-practice-btn" class="btn-danger exit-practice-btn" style="display: none;">Exit Practice</button>
                 <div id="cube"></div>
             </div>
 
@@ -1150,6 +1258,28 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Algorithm Explorer View -->
+                <div id="algorithm-explorer-view" class="view-content">
+                    <div class="control-section">
+                        <h2>Algorithm Explorer</h2>
+                        <div id="algorithm-list" class="algorithm-list">
+                            <!-- Algorithm cards will be inserted here -->
+                        </div>
+                    </div>
+                    <div id="practice-algorithm-info" class="control-section" style="display: none;">
+                        <!-- Practice mode info will be inserted here -->
+                    </div>
+                    <div class="control-section" id="practice-sequence-section" style="display: none;">
+                        <h2>Move Sequence</h2>
+                        <div id="practice-sequence-display" class="sequence-display">
+                            <!-- Sequence will be displayed here during practice -->
+                        </div>
+                        <div class="progress-bar" style="display: none;">
+                            <div id="practice-progress-fill" class="progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1163,6 +1293,7 @@
             <button class="nav-item active" data-view="timer-view">Timer</button>
             <button class="nav-item" data-view="trainer-view">Notation Trainer</button>
             <button class="nav-item" data-view="cross-practice-view">Cross Practice</button>
+            <button class="nav-item" data-view="algorithm-explorer-view">Algorithm Explorer</button>
             <button class="nav-item" data-view="history-view">Solve History</button>
         </div>
     </div>
