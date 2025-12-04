@@ -1915,17 +1915,18 @@ class CubePracticeApp {
         // Build full algorithm string (setup + algorithm)
         let fullAlg = '';
         if (algorithm.setup && algorithm.setup.trim()) {
-            fullAlg = new Alg(algorithm.setup + ' ' + algorithm.notation);
+            fullAlg = new Alg(algorithm.setup).concat(new Alg(algorithm.notation).invert());
         } else {
-            fullAlg = new Alg(algorithm.notation);
+            fullAlg = new Alg(algorithm.notation).invert();
         }
 
         
         // Apply stickering mask
-        const mask = algorithm.stickeringType;
-        this.twistyPlayer.alg = 'x2 y2';
-        this.twistyPlayer.experimentalStickering = mask;
-        this.twistyPlayer.alg = fullAlg.invert();
+        // const mask = algorithm.stickeringType;
+        // this.twistyPlayer.alg = '';
+        // this.twistyPlayer.alg = 'x2 y2';
+        // this.twistyPlayer.experimentalStickering = mask;
+        this.twistyPlayer.alg = fullAlg;
         // this.twistyPlayer.experimentalSetupAnchor = 'start';
         
         // Show practice button
